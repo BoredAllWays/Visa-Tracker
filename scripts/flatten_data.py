@@ -2,9 +2,8 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
-
 class VisaDataProcessor():
-    def __init__(self, file_path, country_name, preference, preference_range = ["EB1", "EB2", "EB3"]):
+    def __init__(self, file_path, country_name, preference, preference_range = {"EB1" : "#007BFF", "EB2" : "#FF9F00", "EB3" : "#28A745"}):
         self.file_path = file_path
         self.country_name = country_name
         self.sheet_name = self.country_name
@@ -27,24 +26,20 @@ class VisaDataProcessor():
         list_columns = list(df.columns)
         year = int(list_columns[5].replace("Priority Date Year -", "")) - 1
         return year
-    def display(self):
+    def create_line_chart(self):
         df_flat = self.flatten()
         back_log = df_flat[df_flat["Visa Status"] == "Awaiting Availability"]
-        eb_back_logs = []
-        #line chart
-        for i in self.preference_range:
-            temp = back_log[back_log["Preference Category"].str.contains(i)]
-            temp = temp[temp["Count"] > 0]
-            eb_back_logs.append(temp)
         plt.figure(figsize=(12, 6))
-        colors = ["#007BFF", "#FF9F00", "#28A745"]
-        for i in range(len(eb_back_logs)): 
-            plt.plot(eb_back_logs[i]["Date"], eb_back_logs[i]["Count"], label = f"eb{i+1}-backlog", color=colors[i], linewidth = 2)
-        plt.title("Graph")
-        plt.xlabel("Priority Date", fontsize = 12)
-        plt.ylabel("Number of people waiting", fontsize = 12)
+        for pref, color in self.preference_range.items():
+            temp = back_log[back_log["Preference Category"].str.contains(pref)]
+            temp = temp[temp["Count"] > 0].sort_values("Date")
+            if not temp.empty:
+                plt.plot(temp["Date"], temp["Count"], label=f"{pref.lower()}-backlog", color=color, linewidth=2)     
+        plt.title(f"{self.country_name} Priority Date Inventory (Line)")
+        plt.xlabel("Priority Date")
+        plt.ylabel("Number of people waiting")
         plt.legend()
         plt.grid(True, linestyle='--', alpha=0.6)
-        plt.savefig('data/backlog_graph.png')
+        plt.savefig(f'data/{self.country_name.lower()}_line_graph.png')
         plt.close()
-    
+        
