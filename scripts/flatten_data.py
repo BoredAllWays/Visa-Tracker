@@ -6,10 +6,12 @@ class VisaDataProcessor():
     def __init__(self, file_path, country_name, preference, preference_range = {"EB1" : "#007BFF", "EB2" : "#FF9F00", "EB3" : "#28A745"}):
         self.file_path = file_path
         self.country_name = country_name
+        self.preference = preference
         self.sheet_name = self.country_name
         self.preference_range = preference_range
-        if (preference == "EB2" or preference == "EB3") and self.country_name == "India":
+        if (self.preference == "EB2" or self.preference == "EB3") and self.country_name == "India":
             self.sheet_name = "India (EB2 EB3)"
+            self.preference_range = {"EB2" : "#FF9F00", "EB3" : "#28A745"}
             
     def flatten(self):
         data = pd.read_excel(self.file_path, self.sheet_name, skiprows=3, skipfooter=12)
@@ -42,4 +44,20 @@ class VisaDataProcessor():
         plt.grid(True, linestyle='--', alpha=0.6)
         plt.savefig(f'data/{self.country_name.lower()}_line_graph.png')
         plt.close()
-        
+    def get_i140_snapshot(self):
+        file = os.path.join(os.getcwd(), "data", "eb_i140_i360_i526_performancedata_fy2025_q3.xlsx")
+        data = pd.read_excel(file, skiprows=3, skipfooter=12)
+        data["Country"] = data["Country"].astype(str).str.strip()
+        cols = list(data.columns)
+        cols = cols[1:]
+        for col in cols:
+            data[col] = pd.to_numeric(data[col].replace("-", 0), errors="coerce").fillna(0)
+        row = data[data["Country"] == self.country_name]
+        mapping  = {
+            "EB1" : "1st (Priority)",
+            "EB2" : "2nd (Advanced Degree Professional)",
+            "EB3" : "3rd (Professional and Skilled)"
+        }
+        if row.empty:
+            return 0
+        return int(row[mapping.get(self.preference)].iloc[0])
