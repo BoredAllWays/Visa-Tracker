@@ -14,67 +14,97 @@ def get_spillover_for_year():
         return np.random.randint(100, 500)
     else:
         return np.random.randint(2000, 8000)
-def run_monte_carlo(vdp, priority_date, country_cap = 0.07, pref_percent = 0.286, annual_quota = 140000, sims = 10000):
+
+def run_monte_carlo(vdp, priority_date, current_bulletin_date, country_cap=0.07, pref_percent=0.286, annual_quota=140000, sims=10000):
     inv = vdp.flatten()
     inv = inv[inv["Visa Status"] == "Awaiting Availability"].sort_values("Date")
-    hidden_total = vdp.get_i140_snapshot()
+    bulletin_cutoff = pd.to_datetime(current_bulletin_date)
+    inv = inv[inv["Date"] >= bulletin_cutoff]
     
-    monthly_quota = (annual_quota * 0.07 * 0.286) / 12
-    target_date = pd.to_datetime(priority_date)
+    inv_dates = pd.to_datetime(inv["Date"]).values
+    inv_counts = inv["Count"].astype(float).values
+    
+    hidden_total = float(vdp.get_i140_snapshot())
+    
+    monthly_quota = (annual_quota * country_cap * pref_percent) / 12
+    target_date = pd.to_datetime(priority_date).to_datetime64()
+    
+    if target_date < bulletin_cutoff.to_datetime64():
+        print("User is already current! Wait time is 0.")
+        return [0] * sims
     results = []
     
-    if inv.empty:
-        max_inv_date = pd.Timestamp.min
+    if len(inv_dates) == 0:
+        max_inv_date = np.datetime64('1677-09-21')
     else:
-        max_inv_date = inv["Date"].max()
+        max_inv_date = inv_dates.max()
+        
     is_hidden = target_date > max_inv_date
+    
     for _ in range(sims):
         sim_hidden = hidden_total
-        sim_inv = inv.copy()
+        sim_counts = inv_counts.copy()
+        
+        idx = 0
+        max_idx = len(sim_counts)
+        
         months_passed = 0
         user_reached = False
-        spillover = get_spillover_for_year()
+        
+        spillover = get_spillover_for_year() / 12
+        
         while not user_reached:
+            if months_passed > 0 and months_passed % 12 == 0:
+                spillover = get_spillover_for_year() / 12
+                
             uscis_efficiency = np.random.uniform(0.8, 1.2)
             current_supply = monthly_quota * uscis_efficiency + spillover
             
             annual_dropout = np.random.uniform(0.02, 0.08)
             monthly_dropout_factor = 1 - (annual_dropout) / 12
             sim_hidden *= monthly_dropout_factor
-            if months_passed > 0 and months_passed % 12 == 0:
-                spillover = get_spillover_for_year()
-            if not sim_inv.empty:
-                idx = sim_inv.index[0]
-                if not is_hidden and sim_inv.at[idx, "Date"] > target_date:
+            
+            if idx < max_idx:
+                if not is_hidden and inv_dates[idx] > target_date:
                     user_reached = True
                     break
-                sim_inv.at[idx, "Count"] -= current_supply
-                while not sim_inv.empty and sim_inv.iloc[0]["Count"] <= 0:
-                    leftover_visas = abs(sim_inv.iloc[0]["Count"])
-                    sim_inv = sim_inv.iloc[1:]
-                    if not sim_inv.empty:
-                        idx = sim_inv.index[0]
-                        sim_inv.at[idx, "Count"] -= leftover_visas
+                
+                sim_counts[idx] -= current_supply
+                
+                while idx < max_idx and sim_counts[idx] <= 0:
+                    leftover_visas = abs(sim_counts[idx])
+                    idx += 1
+                    
+                    if idx < max_idx:
+                        sim_counts[idx] -= leftover_visas
                     else:
                         sim_hidden -= leftover_visas
             else:
                 sim_hidden -= current_supply
-            if is_hidden and sim_inv.empty and sim_hidden <= 0:
+                
+            if is_hidden and idx >= max_idx and sim_hidden <= 0:
                 user_reached = True
-            if not is_hidden and sim_inv.empty:
+            if not is_hidden and idx >= max_idx:
                 user_reached = True
+                
             months_passed += 1
             if months_passed > 1200:
                 break
-            results.append(months_passed / 12)
-        return results
+                
+        results.append(months_passed / 12)
+        
+    return results
+
 def plot_simulation_results(results, country, preference):
+    if not results or results == [0] * len(results):
+        print("no plot needed, date is already current")
+        return
     plt.figure(figsize=(10, 6))
-    plt.hist(results, bins=50, color="skyblue", edgecolor="black", alpha=0.7)
+    plt.hist(results, bins=100, color="skyblue", edgecolor="black", alpha=0.7)
     avg_years = np.mean(results)
     median_years = np.median(results)
     safe_years = np.percentile(results, 90)
-    plt.axvline(median_years, color = "green", linestyle = "dashed", linewidth = 2, label = f"Median : {median_years:.1f} Years")
+    plt.axvline(median_years, color="green", linestyle="dashed", linewidth=2, label=f"Median : {median_years:.1f} Years")
     plt.axvline(safe_years, color='red', linestyle='dashed', linewidth=2, label=f'90% Certainty: {safe_years:.1f} Years')
     plt.title(f'Monte Carlo Simulation: Green Card Wait Time ({country} {preference})', fontsize=14)
     plt.xlabel('Years to Wait', fontsize=12)
@@ -85,11 +115,10 @@ def plot_simulation_results(results, country, preference):
     plt.savefig(output_file)
     print(f"Plot saved to {output_file}")
     plt.close()
+
 if __name__ == "__main__":
-    file = file_path = os.path.join(os.getcwd(), "data", "eb_inventory_october_2025.xlsx")
+    file = os.path.join(os.getcwd(), "data", "eb_inventory_october_2025.xlsx")
     vdp = VisaDataProcessor(file, "India", "EB2")
-    final_results = run_monte_carlo(vdp, "2014-12-01", sims=10000000)
-    vdp.create_line_chart()
-    print(final_results)
+    final_results = run_monte_carlo(vdp, "2016-12-01", "2013-07-15", sims=10000)
+    print(final_results[:10])
     plot_simulation_results(final_results, "India", "EB2")
-    
