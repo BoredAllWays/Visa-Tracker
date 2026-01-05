@@ -60,7 +60,7 @@ def run_monte_carlo(vdp, priority_date, current_bulletin_date, country_cap=0.07,
             uscis_efficiency = np.random.uniform(0.8, 1.2)
             current_supply = monthly_quota * uscis_efficiency + spillover
             
-            annual_dropout = np.random.uniform(0.02, 0.08)
+            annual_dropout = np.random.uniform(0.025, 0.15)
             monthly_dropout_factor = 1 - (annual_dropout) / 12
             sim_hidden *= monthly_dropout_factor
             
@@ -119,6 +119,6 @@ def plot_simulation_results(results, country, preference):
 if __name__ == "__main__":
     file = os.path.join(os.getcwd(), "data", "eb_inventory_october_2025.xlsx")
     vdp = VisaDataProcessor(file, "India", "EB2")
-    final_results = run_monte_carlo(vdp, "2016-12-01", "2013-07-15", sims=10000)
+    final_results = run_monte_carlo(vdp, "2014-12-01", "2013-12-01", sims=10000)
     print(final_results[:10])
     plot_simulation_results(final_results, "India", "EB2")
