@@ -60,5 +60,4 @@ class VisaDataProcessor():
         }
         if row.empty:
             return 0
-        print(int(row[mapping.get(self.preference)].iloc[0]))
         return int(row[mapping.get(self.preference)].iloc[0])
