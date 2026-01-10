@@ -22,7 +22,7 @@ class VisaDataProcessor():
         prior_year = self.get_prior_year(df)
         df_flat = df.melt(id_vars=id_cols, var_name="Year", value_name="Count")
         df_flat["Year"] = df_flat["Year"].str.replace(m.COL_YEAR_PREFIX, "", regex=False)
-        df_flat["Count"] = df_flat["Count"].replace("-", m.VALUE_REPLACE_DASH).replace("D", m.VALUE_REPLACE_D).infer_objects(copy = False)
+        df_flat["Count"] = pd.to_numeric(df_flat["Count"].replace("-", m.VALUE_REPLACE_DASH).replace("D", m.VALUE_REPLACE_D))
         temp_yrs = df_flat["Year"].replace(m.COL_PRIOR_YEARS, str(prior_year))
         df_flat["Date"] = pd.to_datetime(df_flat[m.COL_PRIORITY_MONTH] + " " + temp_yrs, format="%B %Y")
         return df_flat

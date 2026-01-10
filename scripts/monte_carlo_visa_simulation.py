@@ -67,8 +67,8 @@ class MonteCarloVisaSimulation:
         return base_quota, spillover_list, attrition_rates, dependancy_ratio, duplicate_rate
 
     def gen_people_ahead(self, inv, last_inv_d):
-        inv = inv[inv["Date"] > self.visa_bulletin_date]
-
+        if m.WANT_BULLETIN:
+            inv = inv[inv["Date"] > self.visa_bulletin_date]
         if self.target_date < last_inv_d:
             self.hidden = False
             people_ahead = inv[inv["Date"] < self.target_date]["Count"].sum()
@@ -135,7 +135,7 @@ class MonteCarloVisaSimulation:
             if results[i] < years:
                 count += 1
         prob = count / result_size * 100
-        print(f"The probability that you will wait less than {years} years is {prob:.2f}%")
+        print(f"The probability that you will wait less than {years} years is {prob:.2f}% for an {self.preference} {self.country} national with a priority date of {self.target_date}")
     def plot_histogram(self, results):
         p50 = np.percentile(results, 50)
         p95 = np.percentile(results, 95)
