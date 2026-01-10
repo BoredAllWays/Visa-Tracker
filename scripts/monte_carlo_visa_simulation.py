@@ -34,20 +34,20 @@ class MonteCarloVisaSimulation:
         self.i140_inventory_date = pd.Timestamp(i140_inventory_date)
 
         self.vdp = VisaDataProcessor(file_path, country, preference)
+        self.hidden = True
 
     def gen_sim_parameters(self):
         base_quota = self.total_greencards * self.country_cap * self.category_preference
 
         # Use macros for ranges and probabilities
         ranges = m.SPILLOVER_RANGES
-        scenarios = list(ranges.keys())
+        scenarios = np.array(list(ranges.keys()))
         probs = m.SPILLOVER_PROBS
 
-        choices = [np.random.choice(scenarios, p=probs) for _ in range(self.n_years)]
-        spillover_list = [
-            np.random.randint(ranges[choices[i]][0], ranges[choices[i]][1] + 1)
-            for i in range(self.n_years)
-        ]
+        choices = np.random.choice(scenarios, size=self.n_years, p=probs)
+        spillover_lower_bound = np.array([ranges[i][0] for i in choices])
+        spillover_upper_bound = np.array([ranges[i][1] + 1 for i in choices])
+        spillover_list = np.random.randint(spillover_lower_bound, spillover_upper_bound)
 
         # Use macros for stochastic distributions
         dependancy_ratio = np.random.triangular(
@@ -66,22 +66,25 @@ class MonteCarloVisaSimulation:
 
         return base_quota, spillover_list, attrition_rates, dependancy_ratio, duplicate_rate
 
-    def gen_people_ahead(self, inv, last_inv_d, dupl, dep):
+    def gen_people_ahead(self, inv, last_inv_d):
         inv = inv[inv["Date"] > self.visa_bulletin_date]
 
         if self.target_date < last_inv_d:
-            return inv[inv["Date"] < self.target_date]["Count"].sum()
-
+            self.hidden = False
+            people_ahead = inv[inv["Date"] < self.target_date]["Count"].sum()
+            return people_ahead
         people_ahead = inv["Count"].sum()
+        return people_ahead
 
+    def gen_i140_count(self, last_inv_d, dupl, dep):
         gap_days = (self.i140_inventory_date - last_inv_d).days
         gap_pos_days = (self.target_date - last_inv_d).days
         pct_in_gap = min(gap_pos_days / gap_days, 1.0)
 
         i140_count = self.vdp.get_i140_snapshot() * pct_in_gap * (1 - dupl) * dep
 
-        return people_ahead + i140_count
-
+        return i140_count
+        
     def monte_carlo(self):
         eb_inventory = self.vdp.flatten()
         eb_inventory = eb_inventory[
@@ -97,14 +100,14 @@ class MonteCarloVisaSimulation:
             return [0.0] * self.sims
 
         results = []
-
+        people_ahead_sim = self.gen_people_ahead(eb_inventory, last_inv_date)
         for _ in tqdm(range(self.sims), desc="running monte carlo simulations"):
             quota, spillovers, attr, dep, dupl = self.gen_sim_parameters()
-            people_ahead = self.gen_people_ahead(eb_inventory, last_inv_date, dupl, dep)
-
+            people_ahead = people_ahead_sim
+            if self.hidden:
+                people_ahead += self.gen_i140_count(last_inv_date, dupl, dep)
             months_passed = 0
             current_backlog = people_ahead
-
             year_index = 0
             supply = quota + spillovers[year_index]
             current_backlog *= (1 - attr[year_index])
