@@ -14,7 +14,7 @@ class VisaDataProcessor():
         if (self.preference == "EB2" or self.preference == "EB3") and self.country_name == "India":
             self.sheet_name = m.SHEET_NAME_INDIA
             self.preference_range = m.COLORS_INDIA
-            
+        self.i_140_count = self.set_i140_snapshot()
     def flatten(self):
         data = pd.read_excel(self.file_path, self.sheet_name, skiprows=m.EXCEL_SKIPROWS, skipfooter=m.EXCEL_SKIPFOOTER)
         df = pd.DataFrame(data)
@@ -22,7 +22,7 @@ class VisaDataProcessor():
         prior_year = self.get_prior_year(df)
         df_flat = df.melt(id_vars=id_cols, var_name="Year", value_name="Count")
         df_flat["Year"] = df_flat["Year"].str.replace(m.COL_YEAR_PREFIX, "", regex=False)
-        df_flat["Count"] = df_flat["Count"].replace("-", m.VALUE_REPLACE_DASH).replace("D", m.VALUE_REPLACE_D)
+        df_flat["Count"] = df_flat["Count"].replace("-", m.VALUE_REPLACE_DASH).replace("D", m.VALUE_REPLACE_D).infer_objects(copy = False)
         temp_yrs = df_flat["Year"].replace(m.COL_PRIOR_YEARS, str(prior_year))
         df_flat["Date"] = pd.to_datetime(df_flat[m.COL_PRIORITY_MONTH] + " " + temp_yrs, format="%B %Y")
         return df_flat
@@ -50,6 +50,8 @@ class VisaDataProcessor():
         plt.close()
 
     def get_i140_snapshot(self):
+        return self.i_140_count
+    def set_i140_snapshot(self):
         file = os.path.join(os.getcwd(), m.DATA_DIR, m.I140_FILE)
         data = pd.read_excel(file, skiprows=m.EXCEL_SKIPROWS, skipfooter=m.EXCEL_SKIPFOOTER)
         data["Country"] = data["Country"].astype(str).str.strip()
