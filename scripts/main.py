@@ -16,7 +16,7 @@ def main():
     )
 
     results = sim.monte_carlo()
-    sim.calculate_probability(results, 5)
+    sim.calculate_probability(results, 2.5)
     if len(results) > 0 and np.sum(results) == 0:
         print("Date already current. 0 wait time")
     else:

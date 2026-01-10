@@ -3,7 +3,7 @@ import os
 # --- Simulation Configuration ---
 COUNTRY = "India"
 PREFERENCE = "EB2"
-TARGET_DATE = "2015-08-15"
+TARGET_DATE = "2016-08-15"
 VISA_BULLETIN_DATE = "2013-07-15"
 SIMS = 1000
 N_YEARS = 100
