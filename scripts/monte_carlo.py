@@ -202,7 +202,7 @@ if __name__ == "__main__":
     engine = VisualVisaSim(file_path, "India", "EB2", sims=1000)
     vdp = VisaDataProcessor(file_path, "India", "EB2")
     vdp.create_line_chart()
-    target_date = "2016-08-11"
+    target_date = "2015-08-15"
     print(f"--- Running Simulations for {target_date} ---")
 
     r_pess = engine.run_simulation(target_date, "Pessimistic")

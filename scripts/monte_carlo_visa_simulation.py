@@ -5,7 +5,6 @@ from flatten_data import VisaDataProcessor
 from tqdm import tqdm
 import seaborn as sns
 import macros as m 
-
 class MonteCarloVisaSimulation:
     def __init__(
         self,
@@ -121,15 +120,22 @@ class MonteCarloVisaSimulation:
                 safe_index = min(year_index, len(spillovers) - 1)
                 supply = quota + spillovers[safe_index]
                 current_backlog *= (1 - attr[safe_index])
-
-            results.append(months_passed / 12)
+            results.append(float(months_passed / 12))
 
         return results
-
+    def calculate_probability(self, results, years):
+        count = 0
+        result_size = len(results)
+        if result_size == 0:
+            return 0.0
+        for i in range(result_size):
+            if results[i] < years:
+                count += 1
+        prob = count / result_size * 100
+        print(f"The probability that you will wait less than {years} years is {prob:.2f}%")
     def plot_histogram(self, results):
         p50 = np.percentile(results, 50)
         p95 = np.percentile(results, 95)
-
         plt.style.use("dark_background")
         plt.figure(figsize=m.HIST_FIGSIZE)
 
