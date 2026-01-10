@@ -48,7 +48,8 @@ class MonteCarloVisaSimulation:
         spillover_lower_bound = np.array([ranges[i][0] for i in choices])
         spillover_upper_bound = np.array([ranges[i][1] + 1 for i in choices])
         spillover_list = np.random.randint(spillover_lower_bound, spillover_upper_bound)
-
+        if self.preference == "EB3":
+            spillover_list = spillover_list * np.random.uniform(m.EB3_SPILLOVER_LOWER_BOUND, m.EB3_SPILLOVER_UPPER_BOUND)
         # Use macros for stochastic distributions
         dependancy_ratio = np.random.triangular(
             left=m.DEP_RATIO_LEFT, 
