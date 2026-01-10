@@ -199,8 +199,8 @@ if __name__ == "__main__":
     print(f"Created directory: {output_dir}")
 
     file_path = os.path.join(os.getcwd(), "data", "eb_inventory_october_2025.xlsx")
-    engine = VisualVisaSim(file_path, "India", "EB2", sims=3000)
-    vdp = VisaDataProcessor(file_path, "China", "EB1")
+    engine = VisualVisaSim(file_path, "India", "EB2", sims=1000)
+    vdp = VisaDataProcessor(file_path, "India", "EB2")
     vdp.create_line_chart()
     target_date = "2016-08-11"
     print(f"--- Running Simulations for {target_date} ---")
